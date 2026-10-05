@@ -66,6 +66,24 @@ def _gray(path):
         return None
     return _downscale(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY))
 
+@lru_cache(maxsize=4096)
+def _template_score(src_path, nd_path):
+    """fix scaling mismatch on crops."""
+    src, nd = _arr(src_path), _arr(nd_path)
+    if src is None or nd is None:
+        return 0.0
+    # one shared scale factor, based on the original
+    k = min(1.0, 512 / max(src.shape[:2]))
+    src_g = cv2.cvtColor(cv2.resize(src, None, fx=k, fy=k), cv2.COLOR_BGR2GRAY)
+    best = 0.0
+    for s in (0.5, 0.75, 1.0, 1.25, 1.5):
+        f = k * s
+        t = cv2.cvtColor(cv2.resize(nd, None, fx=f, fy=f), cv2.COLOR_BGR2GRAY)
+        if (t.shape[0] > src_g.shape[0] or t.shape[1] > src_g.shape[1]
+                or min(t.shape) < 16):
+            continue
+        best = max(best, float(cv2.matchTemplate(src_g, t, cv2.TM_CCOEFF_NORMED).max()))
+    return best
 
 @lru_cache(maxsize=256)
 def _size(path):
@@ -88,6 +106,11 @@ def rule1_metadata(target, input_path):
         size_ratio = min(src_size, in_size) / max(src_size, in_size)
         area_kept = (in_w * in_h) / max(1, src_w * src_h)
         metric = 0.5 * size_ratio + 0.5 * min(1.0, area_kept)
+        
+
+        if (in_w <= src_w and in_h <= src_h and (in_w, in_h) != (src_w, src_h) 
+           and _template_score(target["path"], input_path) >= 0.95):
+         metric = max(metric, 0.7)
         out["metric"] = round(max(0.0, min(1.0, metric)), 3)
         out["note"] = f"Size ratio {out['metric']:.2f}"
         if out["metric"] >= 0.6:
@@ -135,10 +158,10 @@ def rule3_template(target, input_path):
             nd_g = cv2.resize(nd_g, (min(nd_g.shape[1], src_g.shape[1]),
                                      min(nd_g.shape[0], src_g.shape[0])))
         res = cv2.matchTemplate(src_g, nd_g, cv2.TM_CCOEFF_NORMED)
-        metric = float(res.max())
+        metric = _template_score(target["path"], input_path)
         out["metric"] = round(max(0.0, min(1.0, metric)), 3)
         out["note"] = f"Match score {out['metric']:.2f}"
-        if out["metric"] >= 0.4:
+        if out["metric"] >= 0.8:
             out["fired"] = True
             out["score"] = int(round(out["out_of"] * out["metric"]))
     except Exception:
