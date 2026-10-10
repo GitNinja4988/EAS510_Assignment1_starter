@@ -77,7 +77,7 @@ Final Score: 75/100 -> MATCH to original_03.jpg
 ```
 
 
-## Observed weaknees in V1: what failed and why 
+## Observed weakness in V1: what failed and why 
 
 V1 strugggled to detect some modified images, specifically the resized ones. The template matching rule produced low similarity scores when the image scale changed as a result some genuine modified images
  were rejected even when other rules provided useful information.
