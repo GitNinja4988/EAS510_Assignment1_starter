@@ -76,6 +76,32 @@ Rule 3 (Template): FIRED - Match score 0.76 -> 30/40 points
 Final Score: 75/100 -> MATCH to original_03.jpg
 ```
 
+
+Observed Weaknees in V1: what failed and why 
+
+V1 strugggled to detect some modified images, specifically the resized ones. The template matching rule produced low similarity scores when the image scale changed as a result some genuine modified images
+ were rejected even when other rules provided useful information.
+
+Design decision for V2: what rule four is and why you chose it
+
+I added rule for using canny as detection. This is because rule compares the edge maps of original image and the suspect image
+ after resizing both images to the same dimensions.
+
+ the rule waits at 25 points for rule one, 25 points for rule two, 40 points, and for rule three, 10 points, for rule four, the total remains hundred points
+
+Effect of the change: accuracy before/after on easy versus hard
+
+In V1, in the easy test process, 75 images with 60 matched and 15 rejected, the hard test process 60 images with 48 matched and 12 rejected.
+In V2, The combined test processed 135 images. with 113 matched and 22 rejected, the output format checker also passed for all 135 images.
+
+These Results show the overall V2 outcome. But the combined V2 result alone does not tell us the improvement on easy and hard images separately.
+
+Trade-offs: what new costs or risks did rule 4 introduce
+
+Rule four adds a computation because both images must be converted to grayscale resized and processed using Caney's detection since rule four contributes only 10 points it provides additional evidence without dominating the original rules.
+
+
+
 ## Backup doctrine
 
 Your Codio box can be reset at any time. **Your fork on GitHub is the only safe
